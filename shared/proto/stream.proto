@@ -1,0 +1,20 @@
+syntax = "proto3";
+package athleteview.stream;
+
+message StreamEvent {
+  string stream_id = 1;
+  string event_type = 2;  // "created", "started", "ended", "error"
+  string athlete_id = 3;
+  int64 timestamp = 4;
+  map<string, string> metadata = 5;
+}
+
+message FrameMetadata {
+  string stream_id = 1;
+  uint64 frame_number = 2;
+  int64 timestamp_us = 3;
+  uint32 width = 4;
+  uint32 height = 5;
+  string codec = 6;
+  bool ai_enhanced = 7;
+}
