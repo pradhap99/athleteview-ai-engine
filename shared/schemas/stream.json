@@ -1,0 +1,228 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://athleteview.ai/schemas/stream.json",
+  "title": "Stream Configuration",
+  "description": "Schema for a live stream configuration in the AthleteView AI platform. Covers video encoding, AI features, distribution, and overlay settings.",
+  "type": "object",
+  "required": ["id", "title", "athlete_id", "sport"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for the stream (UUID v4)."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100,
+      "description": "Human-readable title for the stream."
+    },
+    "athlete_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID of the athlete being streamed."
+    },
+    "sport": {
+      "type": "string",
+      "enum": [
+        "soccer",
+        "basketball",
+        "cricket",
+        "kabaddi",
+        "tennis",
+        "athletics",
+        "swimming",
+        "cycling",
+        "rugby",
+        "volleyball"
+      ],
+      "description": "Sport being played or trained in this stream."
+    },
+    "match_id": {
+      "type": ["string", "null"],
+      "format": "uuid",
+      "description": "Optional match/game identifier this stream is part of, or null."
+    },
+    "resolution": {
+      "type": "object",
+      "description": "Video resolution in pixels.",
+      "required": ["width", "height"],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 320,
+          "maximum": 7680,
+          "description": "Horizontal resolution in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 240,
+          "maximum": 4320,
+          "description": "Vertical resolution in pixels."
+        }
+      },
+      "additionalProperties": false
+    },
+    "fps": {
+      "type": "integer",
+      "enum": [24, 30, 60, 120],
+      "description": "Frames per second."
+    },
+    "codec": {
+      "type": "string",
+      "enum": ["h264", "h265"],
+      "description": "Video codec."
+    },
+    "bitrate_kbps": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 50000,
+      "description": "Target video bitrate in kilobits per second."
+    },
+    "protocol": {
+      "type": "string",
+      "enum": ["srt", "rtmp", "webrtc"],
+      "description": "Ingest transport protocol."
+    },
+    "srt_config": {
+      "type": "object",
+      "description": "SRT-specific configuration (only relevant when protocol is 'srt').",
+      "properties": {
+        "passphrase": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 79,
+          "description": "SRT encryption passphrase (10-79 characters)."
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 8000,
+          "default": 120,
+          "description": "SRT latency window in milliseconds."
+        },
+        "max_bandwidth_mbps": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 100,
+          "description": "Maximum bandwidth cap for SRT in megabits per second."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ai_features": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "super_resolution",
+          "object_tracking",
+          "pose_estimation",
+          "highlight_detection",
+          "video_stabilization",
+          "audio_enhancement"
+        ]
+      },
+      "uniqueItems": true,
+      "description": "AI features enabled on this stream."
+    },
+    "distribution": {
+      "type": "object",
+      "description": "Output distribution configuration.",
+      "properties": {
+        "hls_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether HLS output is enabled."
+        },
+        "webrtc_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether low-latency WebRTC output is enabled."
+        },
+        "restream_targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "url"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100,
+                "description": "Human-readable name for the restream target."
+              },
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "RTMP or SRT ingest URL for the restream target."
+              },
+              "stream_key": {
+                "type": "string",
+                "description": "Stream key for the restream target."
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether this restream target is active."
+              }
+            },
+            "additionalProperties": false
+          },
+          "description": "External platforms to restream to (e.g., YouTube, Twitch)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "overlay_config": {
+      "type": "object",
+      "description": "Configuration for real-time data overlays on the stream.",
+      "properties": {
+        "biometrics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show biometric data overlay (HR, SpO2, temperature)."
+        },
+        "tracking": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show object tracking bounding boxes."
+        },
+        "pose": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show pose estimation skeleton overlay."
+        },
+        "hud": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show heads-up display with match/session info."
+        }
+      },
+      "additionalProperties": false
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "starting", "live", "stopping", "error"],
+      "default": "idle",
+      "description": "Current lifecycle status of the stream."
+    },
+    "viewer_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Current number of concurrent viewers."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the stream was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the stream was last updated."
+    }
+  },
+  "additionalProperties": false
+}
