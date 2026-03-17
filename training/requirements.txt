@@ -1,0 +1,10 @@
+torch>=2.1.0
+torchvision>=0.16.0
+ultralytics>=8.1.0
+transformers>=4.36.0
+basicsr>=1.4.2
+realesrgan>=0.3.0
+tensorboard>=2.15.0
+wandb>=0.16.0
+pyyaml>=6.0
+tqdm>=4.66.0
