@@ -1,0 +1,270 @@
+# AthleteView AI Engine - Highlight Detection Training Config
+# ============================================================
+# Temporal action detection for sports highlight moments.
+# Uses ResNet50 backbone + Transformer temporal module.
+
+name: athleteview_highlight_detector
+task: temporal_action_detection
+description: "Multi-sport highlight detection with temporal action transformer"
+
+# --------------------------------------------------------------------------
+# Model Architecture
+# --------------------------------------------------------------------------
+model:
+  name: temporal_action_detector
+  architecture:
+    backbone:
+      type: ResNet50
+      pretrained: true
+      pretrained_source: "torchvision://resnet50"
+      kinetics_pretrained: "weights/resnet50_kinetics400.pth"
+      frozen_stages: 2
+      out_channels: 2048
+    temporal_module:
+      type: TransformerEncoder
+      d_model: 512
+      nhead: 8
+      num_layers: 4
+      dim_feedforward: 2048
+      dropout: 0.1
+      activation: gelu
+      layer_norm_eps: 1.0e-5
+      batch_first: true
+      positional_encoding:
+        type: sinusoidal
+        max_len: 512
+        dropout: 0.1
+    projection:
+      in_features: 2048
+      out_features: 512
+      dropout: 0.3
+    classifier:
+      type: MLP
+      hidden_dims: [256]
+      dropout: 0.5
+      activation: relu
+
+# --------------------------------------------------------------------------
+# Sport-Specific Action Classes
+# --------------------------------------------------------------------------
+data:
+  sports:
+    soccer:
+      num_classes: 8
+      classes:
+        - goal
+        - shot
+        - foul
+        - corner
+        - save
+        - offside
+        - penalty
+        - free_kick
+      class_weights: [3.0, 1.5, 1.0, 0.8, 1.5, 1.0, 2.0, 0.8]
+      dataset_path: "data/highlights/soccer"
+      annotation_file: "data/highlights/soccer/annotations.json"
+
+    basketball:
+      num_classes: 7
+      classes:
+        - dunk
+        - three_pointer
+        - block
+        - steal
+        - fast_break
+        - alley_oop
+        - buzzer_beater
+      class_weights: [2.5, 1.0, 1.5, 1.2, 1.0, 2.0, 3.0]
+      dataset_path: "data/highlights/basketball"
+      annotation_file: "data/highlights/basketball/annotations.json"
+
+    cricket:
+      num_classes: 7
+      classes:
+        - wicket
+        - boundary_four
+        - boundary_six
+        - catch
+        - run_out
+        - lbw
+        - stumping
+      class_weights: [1.5, 1.0, 1.5, 1.2, 2.0, 2.0, 2.5]
+      dataset_path: "data/highlights/cricket"
+      annotation_file: "data/highlights/cricket/annotations.json"
+
+  # Common data settings
+  clip_length: 64
+  clip_stride: 16
+  frame_rate: 25
+  frame_size: [224, 224]
+  temporal_crop: random
+  num_workers: 8
+
+  # Annotation format
+  annotation_format: temporal_segments
+
+# --------------------------------------------------------------------------
+# Training
+# --------------------------------------------------------------------------
+training:
+  epochs: 80
+  batch_size: 8
+  accumulate_grad_batches: 4  # effective batch = 32
+  seed: 42
+
+  # Optimizer
+  optimizer:
+    type: AdamW
+    lr: 1.0e-4
+    betas: [0.9, 0.999]
+    weight_decay: 0.05
+
+  # Learning rate scheduler
+  lr_scheduler:
+    type: CosineAnnealingWithWarmup
+    warmup_epochs: 5
+    warmup_lr: 1.0e-6
+    min_lr: 1.0e-6
+
+  # Loss functions
+  losses:
+    classification:
+      type: FocalLoss
+      alpha: 0.25
+      gamma: 2.0
+      weight: 1.0
+    temporal_iou:
+      type: TemporalIoULoss
+      weight: 0.5
+    center_loss:
+      type: CenterLoss
+      weight: 0.3
+
+  # Mixed precision
+  use_amp: true
+
+  # Gradient clipping
+  grad_clip:
+    max_norm: 1.0
+
+  # Early stopping
+  early_stopping:
+    patience: 15
+    monitor: "val/mAP"
+    mode: "max"
+    min_delta: 0.001
+
+  # Backbone fine-tuning schedule
+  backbone_lr_multiplier: 0.1
+  unfreeze_backbone_epoch: 10
+
+# --------------------------------------------------------------------------
+# Augmentation
+# --------------------------------------------------------------------------
+augmentation:
+  spatial:
+    random_crop:
+      enabled: true
+      size: [224, 224]
+      scale: [0.8, 1.0]
+      ratio: [0.75, 1.33]
+    random_flip:
+      enabled: true
+      prob: 0.5
+    color_jitter:
+      enabled: true
+      brightness: 0.4
+      contrast: 0.4
+      saturation: 0.2
+      hue: 0.1
+    random_grayscale:
+      enabled: true
+      prob: 0.1
+    gaussian_blur:
+      enabled: true
+      prob: 0.2
+      kernel_size: [3, 7]
+
+  temporal:
+    random_speed:
+      enabled: true
+      speed_range: [0.5, 2.0]
+      prob: 0.3
+    temporal_crop:
+      enabled: true
+      jitter: 8
+    temporal_dropout:
+      enabled: true
+      prob: 0.1
+      max_drop: 4
+
+# --------------------------------------------------------------------------
+# Evaluation
+# --------------------------------------------------------------------------
+evaluation:
+  eval_freq: 1
+
+  tiou_thresholds: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+  primary_metric: "mAP@0.5"
+
+  metrics:
+    map:
+      type: temporal_map
+      tiou_thresholds: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+    per_class_ap:
+      enabled: true
+    confusion_matrix:
+      enabled: true
+    top_k_accuracy:
+      k_values: [1, 3, 5]
+
+  nms:
+    type: soft_nms
+    threshold: 0.4
+    sigma: 0.5
+    min_score: 0.01
+
+  vis_samples: 10
+  vis_predictions: true
+  save_predictions: true
+
+# --------------------------------------------------------------------------
+# Logging
+# --------------------------------------------------------------------------
+logging:
+  print_freq: 20
+  use_tensorboard: true
+  tensorboard_dir: "logs/highlight/tensorboard"
+  wandb:
+    enabled: true
+    project: "athleteview-highlights"
+    entity: "athleteview-ai"
+    tags:
+      - "temporal-action-detection"
+      - "highlights"
+      - "sports"
+    log_model: false
+    log_videos: true
+    log_freq: 100
+
+# --------------------------------------------------------------------------
+# Checkpointing
+# --------------------------------------------------------------------------
+checkpoint:
+  save_dir: "checkpoints/highlight"
+  save_best: true
+  save_latest: true
+  max_keep: 5
+  monitor: "mAP@0.5"
+  mode: "max"
+
+# --------------------------------------------------------------------------
+# Export
+# --------------------------------------------------------------------------
+export:
+  formats:
+    - onnx
+    - torchscript
+  input_shape: [1, 64, 3, 224, 224]  # batch, frames, channels, H, W
+  opset_version: 17
+  output_dir: "exports/highlight"
