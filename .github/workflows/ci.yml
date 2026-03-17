@@ -1,0 +1,44 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+
+jobs:
+  gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: cd gateway && npm ci && npm run lint && npm test
+
+  ai-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: cd ai-engine && pip install -r requirements.txt && python -m pytest tests/ -v
+
+  streaming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: cd streaming && pip install -r requirements.txt && python -m pytest tests/ -v
+
+  biometrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: cd biometrics && pip install -r requirements.txt && python -m pytest tests/ -v
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [gateway, ai-engine, streaming, biometrics]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose build
