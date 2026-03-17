@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: biometrics-config
+  namespace: athleteview
+  labels:
+    app: biometrics
+    app.kubernetes.io/name: biometrics
+    app.kubernetes.io/part-of: athleteview-ai-platform
+    app.kubernetes.io/component: biometrics-processor
+data:
+  BIOMETRICS_PORT: "8003"
+  SENSOR_POLLING_INTERVAL_MS: "100"
+  SENSOR_BATCH_SIZE: "50"
+  SENSOR_BUFFER_SIZE: "1000"
+  HEART_RATE_SMOOTHING_WINDOW: "5"
+  GPS_INTERPOLATION_ENABLED: "true"
+  ACCELEROMETER_SAMPLE_RATE: "100"
+  TIMESCALEDB_HOST: "timescaledb.athleteview.svc.cluster.local"
+  TIMESCALEDB_PORT: "5432"
+  TIMESCALEDB_DATABASE: "athleteview_biometrics"
+  TIMESCALEDB_SCHEMA: "public"
+  TIMESCALEDB_POOL_SIZE: "20"
+  TIMESCALEDB_POOL_TIMEOUT: "30000"
+  TIMESCALEDB_CHUNK_INTERVAL: "1 hour"
+  TIMESCALEDB_RETENTION_POLICY: "90 days"
+  KAFKA_BROKERS: "kafka-0.kafka-headless.athleteview.svc.cluster.local:9092,kafka-1.kafka-headless.athleteview.svc.cluster.local:9092,kafka-2.kafka-headless.athleteview.svc.cluster.local:9092"
+  KAFKA_CONSUMER_GROUP: "biometrics-processor"
+  KAFKA_INPUT_TOPIC: "biometrics.raw"
+  KAFKA_OUTPUT_TOPIC: "biometrics.processed"
+  REDIS_HOST: "redis-cluster.athleteview.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_CACHE_TTL: "300"
+  LOG_LEVEL: "INFO"
+  METRICS_PORT: "8003"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: biometrics
+  namespace: athleteview
+  labels:
+    app: biometrics
+    app.kubernetes.io/name: biometrics
+    app.kubernetes.io/part-of: athleteview-ai-platform
+    app.kubernetes.io/component: biometrics-processor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: biometrics
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: biometrics
+        app.kubernetes.io/name: biometrics
+        app.kubernetes.io/part-of: athleteview-ai-platform
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8003"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: biometrics-sa
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: biometrics
+          image: athleteview/biometrics:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8003
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: biometrics-config
+          env:
+            - name: TIMESCALEDB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: timescaledb-username
+            - name: TIMESCALEDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: timescaledb-password
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: redis-password
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: kafka-sasl-password
+                  optional: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - biometrics
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: biometrics
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: biometrics
+  namespace: athleteview
+  labels:
+    app: biometrics
+    app.kubernetes.io/name: biometrics
+    app.kubernetes.io/part-of: athleteview-ai-platform
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8003
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: biometrics
