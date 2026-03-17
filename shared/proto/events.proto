@@ -1,0 +1,23 @@
+syntax = "proto3";
+package athleteview.events;
+
+message HighlightEvent {
+  string id = 1;
+  string stream_id = 2;
+  string athlete_id = 3;
+  string type = 4;
+  float confidence = 5;
+  int64 timestamp = 6;
+  string sport = 7;
+  map<string, string> metadata = 8;
+}
+
+message AlertEvent {
+  string athlete_id = 1;
+  string rule_name = 2;
+  string metric = 3;
+  float value = 4;
+  float threshold = 5;
+  string severity = 6;
+  int64 timestamp = 7;
+}
