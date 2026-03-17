@@ -1,0 +1,295 @@
+# AthleteView AI Engine - ViTPose++ Fine-Tuning Config
+# =====================================================
+# Fine-tune ViTPose++-Large for sports pose estimation.
+# Top-down approach with HuggingFace Transformers integration.
+
+name: athleteview_vitpose_plus_large
+task: pose_estimation
+description: "ViTPose++-Large fine-tuned on COCO + sports-specific keypoints"
+
+# --------------------------------------------------------------------------
+# Model
+# --------------------------------------------------------------------------
+model:
+  name: vitpose-plus-large
+  source: huggingface
+  hub_id: "usyd-community/vitpose-plus-large"
+  backbone:
+    type: ViT
+    variant: large
+    img_size: [256, 192]
+    patch_size: 16
+    embed_dim: 1024
+    depth: 24
+    num_heads: 16
+    mlp_ratio: 4.0
+    drop_path_rate: 0.3
+    qkv_bias: true
+    use_abs_pos_emb: false
+    use_rel_pos_bias: true
+    use_shared_rel_pos_bias: false
+  head:
+    type: TopdownHeatmapSimpleHead
+    in_channels: 1024
+    out_channels: 17
+    num_deconv_layers: 2
+    num_deconv_filters: [256, 256]
+    num_deconv_kernels: [4, 4]
+    extra:
+      final_conv_kernel: 1
+
+# --------------------------------------------------------------------------
+# Keypoints Definition (COCO 17 Joints)
+# --------------------------------------------------------------------------
+keypoints:
+  num_joints: 17
+  names:
+    - nose
+    - left_eye
+    - right_eye
+    - left_ear
+    - right_ear
+    - left_shoulder
+    - right_shoulder
+    - left_elbow
+    - right_elbow
+    - left_wrist
+    - right_wrist
+    - left_hip
+    - right_hip
+    - left_knee
+    - right_knee
+    - left_ankle
+    - right_ankle
+  skeleton:
+    - [15, 13]  # left_ankle -> left_knee
+    - [13, 11]  # left_knee -> left_hip
+    - [16, 14]  # right_ankle -> right_knee
+    - [14, 12]  # right_knee -> right_hip
+    - [11, 12]  # left_hip -> right_hip
+    - [5, 11]   # left_shoulder -> left_hip
+    - [6, 12]   # right_shoulder -> right_hip
+    - [5, 6]    # left_shoulder -> right_shoulder
+    - [5, 7]    # left_shoulder -> left_elbow
+    - [6, 8]    # right_shoulder -> right_elbow
+    - [7, 9]    # left_elbow -> left_wrist
+    - [8, 10]   # right_elbow -> right_wrist
+    - [1, 2]    # left_eye -> right_eye
+    - [0, 1]    # nose -> left_eye
+    - [0, 2]    # nose -> right_eye
+    - [1, 3]    # left_eye -> left_ear
+    - [2, 4]    # right_eye -> right_ear
+    - [3, 5]    # left_ear -> left_shoulder
+    - [4, 6]    # right_ear -> right_shoulder
+  flip_pairs:
+    - [1, 2]    # left_eye <-> right_eye
+    - [3, 4]    # left_ear <-> right_ear
+    - [5, 6]    # left_shoulder <-> right_shoulder
+    - [7, 8]    # left_elbow <-> right_elbow
+    - [9, 10]   # left_wrist <-> right_wrist
+    - [11, 12]  # left_hip <-> right_hip
+    - [13, 14]  # left_knee <-> right_knee
+    - [15, 16]  # left_ankle <-> right_ankle
+  joint_weights:
+    - 1.0  # nose
+    - 1.0  # left_eye
+    - 1.0  # right_eye
+    - 1.0  # left_ear
+    - 1.0  # right_ear
+    - 1.0  # left_shoulder
+    - 1.0  # right_shoulder
+    - 1.2  # left_elbow
+    - 1.2  # right_elbow
+    - 1.5  # left_wrist
+    - 1.5  # right_wrist
+    - 1.0  # left_hip
+    - 1.0  # right_hip
+    - 1.2  # left_knee
+    - 1.2  # right_knee
+    - 1.5  # left_ankle
+    - 1.5  # right_ankle
+  sigma:
+    - 0.026  # nose
+    - 0.025  # left_eye
+    - 0.025  # right_eye
+    - 0.035  # left_ear
+    - 0.035  # right_ear
+    - 0.079  # left_shoulder
+    - 0.079  # right_shoulder
+    - 0.072  # left_elbow
+    - 0.072  # right_elbow
+    - 0.062  # left_wrist
+    - 0.062  # right_wrist
+    - 0.107  # left_hip
+    - 0.107  # right_hip
+    - 0.087  # left_knee
+    - 0.087  # right_knee
+    - 0.089  # left_ankle
+    - 0.089  # right_ankle
+
+# --------------------------------------------------------------------------
+# Dataset
+# --------------------------------------------------------------------------
+data:
+  train:
+    type: COCOPoseDataset
+    ann_file: "data/coco/annotations/person_keypoints_train2017.json"
+    img_dir: "data/coco/images/train2017"
+    # Additional sports-specific data
+    extra_datasets:
+      - ann_file: "data/sports_pose/annotations/train.json"
+        img_dir: "data/sports_pose/images/train"
+        weight: 2.0  # Oversample sports data
+  val:
+    type: COCOPoseDataset
+    ann_file: "data/coco/annotations/person_keypoints_val2017.json"
+    img_dir: "data/coco/images/val2017"
+  test:
+    type: COCOPoseDataset
+    ann_file: "data/coco/annotations/person_keypoints_val2017.json"
+    img_dir: "data/coco/images/val2017"
+
+  # Input pipeline
+  input_size: [256, 192]  # height, width
+  heatmap_size: [64, 48]
+  color_rgb: true
+  num_workers: 8
+
+# --------------------------------------------------------------------------
+# Training
+# --------------------------------------------------------------------------
+training:
+  epochs: 50
+  batch_size: 32
+  accumulate_grad_batches: 1
+  seed: 42
+
+  # Optimizer
+  optimizer:
+    type: AdamW
+    lr: 5.0e-4
+    betas: [0.9, 0.999]
+    weight_decay: 0.1
+
+  # Learning rate scheduler
+  lr_scheduler:
+    type: CosineAnnealingWithWarmup
+    warmup_epochs: 5
+    warmup_lr: 1.0e-6
+    min_lr: 1.0e-6
+    decay_rate: 0.1
+
+  # Loss function
+  loss:
+    type: KeypointMSELoss
+    use_target_weight: true
+
+  # Mixed precision
+  use_amp: true
+
+  # Gradient clipping
+  grad_clip:
+    max_norm: 1.0
+
+  # EMA
+  ema:
+    enabled: true
+    decay: 0.9999
+
+# --------------------------------------------------------------------------
+# Augmentation
+# --------------------------------------------------------------------------
+augmentation:
+  random_flip:
+    enabled: true
+    prob: 0.5
+    direction: horizontal
+  random_scale:
+    enabled: true
+    scale_range: [0.65, 1.35]
+  random_rotation:
+    enabled: true
+    rotation_range: [-45, 45]
+  half_body_transform:
+    enabled: true
+    prob: 0.3
+    num_joints_half: 8
+    upper_body_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    lower_body_ids: [11, 12, 13, 14, 15, 16]
+  color_jitter:
+    enabled: true
+    brightness: 0.3
+    contrast: 0.3
+    saturation: 0.3
+    hue: 0.1
+  random_occlusion:
+    enabled: true
+    prob: 0.2
+    max_area_ratio: 0.1
+
+# --------------------------------------------------------------------------
+# Evaluation
+# --------------------------------------------------------------------------
+evaluation:
+  eval_freq: 1  # evaluate every epoch
+  metrics:
+    pck:
+      threshold: 0.5
+      description: "Percentage of Correct Keypoints at threshold 0.5"
+    ap:
+      type: coco_ap
+      description: "Average Precision (COCO-style OKS-based)"
+      iou_thresholds: [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    ar:
+      type: coco_ar
+      description: "Average Recall (COCO-style)"
+      max_dets: [1, 10, 100]
+  # Per-joint evaluation
+  per_joint_eval: true
+  # Visualization during evaluation
+  vis_samples: 16
+  vis_threshold: 0.3
+
+# --------------------------------------------------------------------------
+# Logging
+# --------------------------------------------------------------------------
+logging:
+  print_freq: 50
+  use_tensorboard: true
+  tensorboard_dir: "logs/pose/tensorboard"
+  wandb:
+    enabled: true
+    project: "athleteview-pose"
+    entity: "athleteview-ai"
+    tags:
+      - "vitpose-plus"
+      - "pose-estimation"
+      - "sports"
+    log_model: false
+    log_images: true
+    log_freq: 200
+
+# --------------------------------------------------------------------------
+# Checkpointing
+# --------------------------------------------------------------------------
+checkpoint:
+  save_dir: "checkpoints/pose"
+  save_best: true
+  save_latest: true
+  max_keep: 5
+  monitor: "AP"
+  mode: "max"
+
+# --------------------------------------------------------------------------
+# Export
+# --------------------------------------------------------------------------
+export:
+  formats:
+    - onnx
+    - torchscript
+  input_shape: [1, 3, 256, 192]
+  opset_version: 17
+  dynamic_axes:
+    input: {0: "batch"}
+    output: {0: "batch"}
+  output_dir: "exports/pose"
