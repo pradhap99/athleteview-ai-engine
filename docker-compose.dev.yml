@@ -1,0 +1,64 @@
+version: "3.9"
+services:
+  gateway:
+    build:
+      context: ./gateway
+      target: dev
+    ports: ["3000:3000"]
+    volumes: ["./gateway/src:/app/src"]
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+    depends_on: [redis, kafka]
+
+  ai-engine:
+    build:
+      context: ./ai-engine
+      target: dev
+    ports: ["8001:8001"]
+    volumes: ["./ai-engine/src:/app/src"]
+    environment:
+      - GPU_DEVICE=0
+      - RELOAD=true
+    depends_on: [kafka]
+
+  streaming:
+    build:
+      context: ./streaming
+      target: dev
+    ports: ["8002:8002", "9000:9000/udp"]
+    volumes: ["./streaming/src:/app/src"]
+    depends_on: [redis, kafka]
+
+  biometrics:
+    build:
+      context: ./biometrics
+      target: dev
+    ports: ["8003:8003"]
+    volumes: ["./biometrics/src:/app/src"]
+    depends_on: [timescaledb, kafka]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_DB: athleteview
+      POSTGRES_USER: athleteview
+      POSTGRES_PASSWORD: secret
