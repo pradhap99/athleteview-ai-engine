@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://athleteview.ai/schemas/athlete.json",
+  "title": "Athlete Profile",
+  "description": "Schema for an athlete's profile in the AthleteView AI platform. Contains identity, physical attributes, biometric baselines, and device linkage.",
+  "type": "object",
+  "required": ["id", "name", "sport", "created_at", "updated_at"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for the athlete (UUID v4)."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Full display name of the athlete."
+    },
+    "sport": {
+      "type": "string",
+      "enum": [
+        "soccer",
+        "basketball",
+        "cricket",
+        "kabaddi",
+        "tennis",
+        "athletics",
+        "swimming",
+        "cycling",
+        "rugby",
+        "volleyball"
+      ],
+      "description": "Primary sport the athlete participates in."
+    },
+    "team": {
+      "type": "string",
+      "maxLength": 255,
+      "description": "Team or club the athlete is affiliated with."
+    },
+    "position": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Playing position within the sport (e.g., 'goalkeeper', 'point_guard')."
+    },
+    "jersey_number": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 99,
+      "description": "Jersey or kit number."
+    },
+    "height_cm": {
+      "type": "number",
+      "minimum": 50,
+      "maximum": 300,
+      "description": "Height in centimetres."
+    },
+    "weight_kg": {
+      "type": "number",
+      "minimum": 20,
+      "maximum": 300,
+      "description": "Weight in kilograms."
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth in ISO 8601 date format (YYYY-MM-DD)."
+    },
+    "nationality": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Nationality or country of representation."
+    },
+    "device_id": {
+      "type": ["string", "null"],
+      "description": "Identifier of the primary wearable device assigned to the athlete, or null if none."
+    },
+    "biometric_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether real-time biometric monitoring is enabled for this athlete."
+    },
+    "profile_image_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL to the athlete's profile image."
+    },
+    "baseline_hr_rest": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 120,
+      "description": "Resting heart rate baseline in beats per minute."
+    },
+    "baseline_hr_max": {
+      "type": "integer",
+      "minimum": 140,
+      "maximum": 220,
+      "description": "Maximum heart rate baseline in beats per minute."
+    },
+    "vo2_max": {
+      "type": "number",
+      "minimum": 10,
+      "maximum": 100,
+      "description": "Maximum rate of oxygen consumption (VO2 max) in mL/kg/min."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Arbitrary key-value metadata for custom extensions (e.g., sponsor info, notes)."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the athlete profile was created."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the athlete profile was last updated."
+    }
+  },
+  "additionalProperties": false
+}
