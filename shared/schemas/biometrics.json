@@ -1,0 +1,268 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://athleteview.ai/schemas/biometrics.json",
+  "title": "Biometric Reading",
+  "description": "Schema for a processed biometric reading from an athlete's wearable sensors in the AthleteView AI platform.",
+  "type": "object",
+  "required": ["athlete_id", "device_id", "timestamp"],
+  "properties": {
+    "athlete_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID of the athlete this reading belongs to."
+    },
+    "device_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the wearable device that produced this reading."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of when the reading was captured."
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID of the training or match session this reading belongs to."
+    },
+    "heart_rate_bpm": {
+      "type": "number",
+      "minimum": 20,
+      "maximum": 250,
+      "description": "Heart rate in beats per minute."
+    },
+    "spo2_pct": {
+      "type": "number",
+      "minimum": 50,
+      "maximum": 100,
+      "description": "Blood oxygen saturation as a percentage."
+    },
+    "hrv": {
+      "type": "object",
+      "description": "Heart rate variability metrics.",
+      "properties": {
+        "sdnn_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Standard deviation of NN intervals in milliseconds."
+        },
+        "rmssd_ms": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Root mean square of successive differences in milliseconds."
+        },
+        "pnn50_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Percentage of successive NN intervals differing by more than 50ms."
+        },
+        "lf_power": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Low-frequency power component (0.04-0.15 Hz) in ms^2."
+        },
+        "hf_power": {
+          "type": "number",
+          "minimum": 0,
+          "description": "High-frequency power component (0.15-0.4 Hz) in ms^2."
+        },
+        "lf_hf_ratio": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Ratio of low-frequency to high-frequency power."
+        }
+      },
+      "additionalProperties": false
+    },
+    "core_temperature_c": {
+      "type": "number",
+      "minimum": 30,
+      "maximum": 45,
+      "description": "Estimated core body temperature in degrees Celsius."
+    },
+    "skin_temperature_c": {
+      "type": "number",
+      "minimum": 20,
+      "maximum": 45,
+      "description": "Measured skin temperature in degrees Celsius."
+    },
+    "respiration_rate": {
+      "type": "number",
+      "minimum": 5,
+      "maximum": 60,
+      "description": "Respiration rate in breaths per minute."
+    },
+    "environment": {
+      "type": "object",
+      "description": "Ambient environmental conditions at the time of reading.",
+      "properties": {
+        "temperature_c": {
+          "type": "number",
+          "minimum": -50,
+          "maximum": 60,
+          "description": "Ambient temperature in degrees Celsius."
+        },
+        "humidity_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Relative humidity as a percentage."
+        },
+        "pressure_hpa": {
+          "type": "number",
+          "minimum": 300,
+          "maximum": 1100,
+          "description": "Barometric pressure in hectopascals."
+        },
+        "heat_index": {
+          "type": "number",
+          "description": "Computed heat index (apparent temperature) in degrees Celsius."
+        },
+        "wbgt": {
+          "type": "number",
+          "description": "Wet-bulb globe temperature in degrees Celsius (outdoor heat stress index)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "motion": {
+      "type": "object",
+      "description": "Motion and activity metrics derived from IMU data.",
+      "properties": {
+        "acceleration_g": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Peak acceleration magnitude in g-force."
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cumulative step count for the session."
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Cumulative distance covered in metres."
+        },
+        "speed_mps": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Instantaneous speed in metres per second."
+        }
+      },
+      "additionalProperties": false
+    },
+    "sweat": {
+      "type": "object",
+      "description": "Sweat biochemistry analysis from on-body sensors.",
+      "properties": {
+        "sodium_mmol": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sodium concentration in millimoles per litre."
+        },
+        "chloride_mmol": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Chloride concentration in millimoles per litre."
+        },
+        "glucose_mmol": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Glucose concentration in millimoles per litre."
+        },
+        "lactate_mmol": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Lactate concentration in millimoles per litre."
+        },
+        "ph": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 14,
+          "description": "Sweat pH level."
+        },
+        "sweat_rate_ml_hr": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Sweat rate in millilitres per hour."
+        }
+      },
+      "additionalProperties": false
+    },
+    "fatigue_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "AI-computed fatigue score (0 = fresh, 100 = exhausted)."
+    },
+    "injury_risk_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "AI-computed injury risk score (0 = low risk, 100 = high risk)."
+    },
+    "performance_index": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "AI-computed overall performance index (0 = poor, 100 = peak)."
+    },
+    "intensity_zone": {
+      "type": "string",
+      "enum": ["rest", "light", "moderate", "hard", "maximum"],
+      "description": "Current exercise intensity zone based on heart rate zones."
+    },
+    "signal_quality": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Overall signal quality of the sensor readings (0.0 = unusable, 1.0 = perfect)."
+    },
+    "alerts": {
+      "type": "array",
+      "description": "Active biometric alerts triggered by this reading.",
+      "items": {
+        "type": "object",
+        "required": ["severity", "metric_name", "message"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique alert identifier."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["warning", "critical", "emergency"],
+            "description": "Urgency level of the alert."
+          },
+          "metric_name": {
+            "type": "string",
+            "description": "Name of the metric that triggered the alert."
+          },
+          "current_value": {
+            "type": "number",
+            "description": "The value that triggered the alert."
+          },
+          "threshold_value": {
+            "type": "number",
+            "description": "The threshold that was breached."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable description of the alert."
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the alert was generated."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
