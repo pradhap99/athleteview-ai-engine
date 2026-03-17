@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine
+  namespace: athleteview
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ai-engine
+  template:
+    metadata:
+      labels:
+        app: ai-engine
+    spec:
+      containers:
+      - name: ai-engine
+        image: athleteview/ai-engine:latest
+        ports:
+        - containerPort: 8001
+        resources:
+          requests:
+            memory: "8Gi"
+            cpu: "4"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "16Gi"
+            nvidia.com/gpu: "1"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        env:
+        - name: GPU_DEVICE
+          value: "0"
+        - name: MODEL_CACHE_DIR
+          value: "/app/weights"
+        - name: KAFKA_BROKERS
+          value: "kafka.athleteview:9092"
+        volumeMounts:
+        - name: model-weights
+          mountPath: /app/weights
+      volumes:
+      - name: model-weights
+        persistentVolumeClaim:
+          claimName: model-weights-pvc
