@@ -1,0 +1,17 @@
+syntax = "proto3";
+package athleteview.biometrics;
+
+message BiometricReading {
+  string athlete_id = 1;
+  int64 timestamp = 2;
+  uint32 heart_rate = 3;
+  float spo2 = 4;
+  float hrv_rmssd = 5;
+  float body_temp = 6;
+  float humidity = 7;
+  float pressure = 8;
+  repeated float accel = 9;
+  repeated float gyro = 10;
+  float fatigue_index = 11;
+  string injury_risk = 12;
+}
