@@ -1,0 +1,251 @@
+# AthleteView AI Engine - Real-ESRGAN Super-Resolution Fine-Tuning Config
+# ========================================================================
+# Fine-tune Real-ESRGAN x4 for sports broadcast upscaling.
+# Based on RRDBNet architecture with second-order degradation pipeline.
+
+name: athleteview_realesrgan_x4
+task: super_resolution
+description: "Real-ESRGAN x4 fine-tuned on sports broadcast footage for 4K upscaling"
+
+# --------------------------------------------------------------------------
+# Model Architecture
+# --------------------------------------------------------------------------
+model:
+  name: RRDBNet
+  num_in_ch: 3
+  num_out_ch: 3
+  num_feat: 64
+  num_block: 23
+  num_grow_ch: 32
+  scale: 4
+  # Discriminator for GAN training
+  discriminator:
+    name: UNetDiscriminatorSN
+    num_in_ch: 3
+    num_feat: 64
+    skip_connection: true
+
+# --------------------------------------------------------------------------
+# Pretrained Weights
+# --------------------------------------------------------------------------
+pretrained_weights:
+  generator: "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth"
+  discriminator: "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x4plus_netD.pth"
+  local_generator: "weights/RealESRGAN_x4plus.pth"
+  local_discriminator: "weights/RealESRGAN_x4plus_netD.pth"
+
+# --------------------------------------------------------------------------
+# Training Configuration
+# --------------------------------------------------------------------------
+training:
+  batch_size: 12
+  num_workers: 8
+  total_iter: 50000
+  warmup_iter: 1000
+
+  # Optimizer
+  optimizer_g:
+    type: Adam
+    lr: 1.0e-4
+    betas: [0.9, 0.99]
+    weight_decay: 0.0
+  optimizer_d:
+    type: Adam
+    lr: 1.0e-4
+    betas: [0.9, 0.99]
+    weight_decay: 0.0
+
+  # Learning rate scheduler
+  lr_scheduler:
+    type: CosineAnnealingRestartLR
+    periods: [50000]
+    restart_weights: [1.0]
+    eta_min: 1.0e-7
+
+  # Loss weights
+  losses:
+    pixel_loss:
+      type: L1Loss
+      weight: 1.0
+      reduction: mean
+    perceptual_loss:
+      type: PerceptualLoss
+      weight: 1.0
+      layer_weights:
+        conv1_2: 0.1
+        conv2_2: 0.1
+        conv3_4: 1.0
+        conv4_4: 1.0
+        conv5_4: 1.0
+      vgg_type: vgg19
+      use_input_norm: true
+      perceptual_weight: 1.0
+      style_weight: 0.0
+    gan_loss:
+      type: GANLoss
+      weight: 0.1
+      gan_type: vanilla
+      real_label_val: 1.0
+      fake_label_val: 0.0
+
+  # EMA (Exponential Moving Average)
+  ema:
+    enabled: true
+    decay: 0.999
+
+  # Mixed precision
+  use_amp: true
+  grad_scaler: true
+
+  # Gradient clipping
+  grad_clip:
+    max_norm: 1.0
+    norm_type: 2
+
+# --------------------------------------------------------------------------
+# Dataset Configuration
+# --------------------------------------------------------------------------
+dataset:
+  train:
+    name: athleteview_sports_sr_train
+    type: RealESRGANDataset
+    dataroot_gt: "data/super_resolution/train/HR"
+    meta_info: "data/super_resolution/train/meta_info.txt"
+    io_backend:
+      type: disk
+
+    # High resolution crop size
+    gt_size: 256
+
+    # Use horizontal flip and rotation augmentation
+    use_hflip: true
+    use_rot: true
+
+    # First degradation pipeline
+    blur_kernel_size: 21
+    kernel_list:
+      - iso
+      - aniso
+      - generalized_iso
+      - generalized_aniso
+      - plateau_iso
+      - plateau_aniso
+    kernel_prob: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
+    sinc_prob: 0.1
+    blur_sigma: [0.2, 3.0]
+    betag_range: [0.5, 4.0]
+    betap_range: [1.0, 2.0]
+
+    # Second degradation pipeline
+    second_blur_prob: 0.8
+    blur_kernel_size2: 21
+    kernel_list2:
+      - iso
+      - aniso
+      - generalized_iso
+      - generalized_aniso
+      - plateau_iso
+      - plateau_aniso
+    kernel_prob2: [0.45, 0.25, 0.12, 0.03, 0.12, 0.03]
+    sinc_prob2: 0.1
+    blur_sigma2: [0.2, 1.5]
+    betag_range2: [0.5, 4.0]
+    betap_range2: [1.0, 2.0]
+
+    # Noise settings
+    noise_range: [1, 30]
+    poisson_scale_range: [0.05, 3.0]
+    gray_noise_prob: 0.4
+    noise_range2: [1, 25]
+    poisson_scale_range2: [0.05, 2.5]
+    gray_noise_prob2: 0.4
+
+    # JPEG compression
+    jpeg_range: [30, 95]
+    jpeg_range2: [30, 95]
+
+    # Resize settings
+    resize_prob: [0.2, 0.7, 0.1]   # up, down, keep
+    resize_range: [0.15, 1.5]
+    resize_prob2: [0.3, 0.4, 0.3]
+    resize_range2: [0.3, 1.2]
+
+    # Final sinc filter
+    final_sinc_prob: 0.8
+
+    # Prefetch
+    prefetch_mode: cuda
+    num_prefetch_queue: 4
+
+  val:
+    name: athleteview_sports_sr_val
+    type: PairedImageDataset
+    dataroot_gt: "data/super_resolution/val/HR"
+    dataroot_lq: "data/super_resolution/val/LR"
+    io_backend:
+      type: disk
+
+# --------------------------------------------------------------------------
+# Validation
+# --------------------------------------------------------------------------
+validation:
+  val_freq: 5000
+  save_img: true
+  num_vis_samples: 8
+
+  metrics:
+    psnr:
+      type: calculate_psnr
+      crop_border: 4
+      test_y_channel: true
+      better: higher
+    ssim:
+      type: calculate_ssim
+      crop_border: 4
+      test_y_channel: true
+      better: higher
+    lpips:
+      type: calculate_lpips
+      better: lower
+
+# --------------------------------------------------------------------------
+# Logging
+# --------------------------------------------------------------------------
+logging:
+  print_freq: 100
+  save_checkpoint_freq: 5000
+  use_tensorboard: true
+  tensorboard_dir: "logs/super_resolution/tensorboard"
+  wandb:
+    enabled: true
+    project: "athleteview-super-resolution"
+    entity: "athleteview-ai"
+    tags:
+      - "real-esrgan"
+      - "super-resolution"
+      - "sports"
+    log_model: false
+    log_freq: 100
+
+# --------------------------------------------------------------------------
+# Checkpointing
+# --------------------------------------------------------------------------
+checkpoint:
+  save_dir: "checkpoints/super_resolution"
+  save_best: true
+  save_latest: true
+  max_keep: 5
+
+# --------------------------------------------------------------------------
+# Export
+# --------------------------------------------------------------------------
+export:
+  formats:
+    - onnx
+    - torchscript
+  input_shape: [1, 3, 256, 256]
+  opset_version: 17
+  dynamic_axes:
+    input: {0: "batch", 2: "height", 3: "width"}
+    output: {0: "batch", 2: "height", 3: "width"}
+  output_dir: "exports/super_resolution"
