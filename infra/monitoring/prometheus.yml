@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:3000']
+    metrics_path: '/metrics'
+
+  - job_name: 'ai-engine'
+    static_configs:
+      - targets: ['ai-engine:8001']
+    scrape_interval: 5s
+
+  - job_name: 'streaming'
+    static_configs:
+      - targets: ['streaming:8002']
+
+  - job_name: 'biometrics'
+    static_configs:
+      - targets: ['biometrics:8003']
