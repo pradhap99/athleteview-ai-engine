@@ -1,0 +1,241 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: streaming-config
+  namespace: athleteview
+  labels:
+    app: streaming
+    app.kubernetes.io/name: streaming
+    app.kubernetes.io/part-of: athleteview-ai-platform
+    app.kubernetes.io/component: media-server
+data:
+  SRT_PORT: "9000"
+  SRT_LATENCY: "200"
+  SRT_MAX_BANDWIDTH: "0"
+  SRT_PAYLOAD_SIZE: "1316"
+  RTMP_PORT: "1935"
+  RTMP_CHUNK_SIZE: "4096"
+  HLS_SEGMENT_DURATION: "4"
+  HLS_PLAYLIST_SIZE: "5"
+  HLS_SEGMENT_FILENAME: "stream_%v_%03d.ts"
+  HLS_BASE_PATH: "/tmp/hls"
+  FFMPEG_PRESET: "ultrafast"
+  FFMPEG_TUNE: "zerolatency"
+  FFMPEG_CRF: "23"
+  FFMPEG_MAX_MUXING_QUEUE_SIZE: "1024"
+  FFMPEG_THREAD_COUNT: "4"
+  FFMPEG_CODEC: "libx264"
+  CDN_DOMAIN: "cdn.athleteview.ai"
+  S3_HLS_BUCKET: "athleteview-hls-segments"
+  S3_RECORDINGS_BUCKET: "athleteview-recordings"
+  KAFKA_BROKERS: "kafka-0.kafka-headless.athleteview.svc.cluster.local:9092,kafka-1.kafka-headless.athleteview.svc.cluster.local:9092,kafka-2.kafka-headless.athleteview.svc.cluster.local:9092"
+  KAFKA_STREAM_EVENTS_TOPIC: "stream.events"
+  KAFKA_FRAME_OUTPUT_TOPIC: "stream.frames"
+  REDIS_HOST: "redis-cluster.athleteview.svc.cluster.local"
+  REDIS_PORT: "6379"
+  AI_ENGINE_GRPC: "ai-engine.athleteview.svc.cluster.local:50051"
+  METRICS_PORT: "8002"
+  LOG_LEVEL: "INFO"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streaming
+  namespace: athleteview
+  labels:
+    app: streaming
+    app.kubernetes.io/name: streaming
+    app.kubernetes.io/part-of: athleteview-ai-platform
+    app.kubernetes.io/component: media-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: streaming
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: streaming
+        app.kubernetes.io/name: streaming
+        app.kubernetes.io/part-of: athleteview-ai-platform
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: streaming-sa
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: streaming
+          image: athleteview/streaming:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8002
+              protocol: TCP
+            - name: srt
+              containerPort: 9000
+              protocol: UDP
+            - name: rtmp
+              containerPort: 1935
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: streaming-config
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: redis-password
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: kafka-sasl-password
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: aws-access-key-id
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: athleteview-secrets
+                  key: aws-secret-access-key
+                  optional: true
+          resources:
+            requests:
+              cpu: "2"
+              memory: "4Gi"
+            limits:
+              cpu: "4"
+              memory: "8Gi"
+          volumeMounts:
+            - name: hls-cache
+              mountPath: /tmp/hls
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 30
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 15"]
+      volumes:
+        - name: hls-cache
+          persistentVolumeClaim:
+            claimName: streaming-hls-pvc
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - streaming
+                topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: streaming
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streaming
+  namespace: athleteview
+  labels:
+    app: streaming
+    app.kubernetes.io/name: streaming
+    app.kubernetes.io/part-of: athleteview-ai-platform
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8002
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: streaming
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streaming-ingest
+  namespace: athleteview
+  labels:
+    app: streaming
+    app.kubernetes.io/name: streaming-ingest
+    app.kubernetes.io/part-of: athleteview-ai-platform
+    app.kubernetes.io/component: media-ingest
+spec:
+  type: NodePort
+  ports:
+    - name: srt
+      port: 9000
+      targetPort: srt
+      protocol: UDP
+      nodePort: 30900
+    - name: rtmp
+      port: 1935
+      targetPort: rtmp
+      protocol: TCP
+      nodePort: 31935
+  selector:
+    app: streaming
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: streaming-hls-pvc
+  namespace: athleteview
+  labels:
+    app: streaming
+    app.kubernetes.io/name: streaming
+    app.kubernetes.io/part-of: athleteview-ai-platform
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 50Gi
