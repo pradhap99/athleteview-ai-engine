@@ -1,16 +1,39 @@
+# AthleteView AI Engine — Dependencies
+# Model Stack v2.0 (April 2026)
+
+# Core
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
-torch>=2.1.0
-torchvision>=0.16.0
+torch>=2.2.0
+torchvision>=0.17.0
 numpy>=1.24.0
-opencv-python-headless>=4.8.0
-ultralytics>=8.1.0
+opencv-python-headless>=4.9.0
+
+# Detection + Tracking: YOLO26 (Jan 2026)
+ultralytics>=8.3.0  # Includes YOLO26, YOLO26-Pose
+
+# Super-Resolution: VPEG + FlashVSR + Real-ESRGAN (fallback)
 basicsr>=1.4.2
-realesrgan>=0.3.0
-transformers>=4.36.0
-onnxruntime-gpu>=1.16.0
+realesrgan>=0.3.0  # Legacy fallback
+
+# Pose Estimation: ViTPose++ (analysis mode)
+transformers>=4.40.0
+
+# Depth Estimation: Depth Pro + DAV2
+# apple-depth-pro  # Install from: pip install git+https://github.com/apple/ml-depth-pro
+
+# Intelligence: Gemma 4
+# google-gemma  # Install via: pip install transformers accelerate
+
+# Inference optimization
+onnxruntime-gpu>=1.17.0
+# tensorrt  # Install separately for TensorRT acceleration
+
+# Messaging + monitoring
 kafka-python-ng>=2.2.0
 prometheus-client>=0.19.0
+
+# Utilities
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
 pillow>=10.1.0
