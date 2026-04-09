@@ -1,0 +1,132 @@
+{
+  "version": "3.0",
+  "codename": "SmartPatch v3.0",
+  "updated": "2026-04-10",
+  "form_factor": {
+    "dimensions_mm": "72x48x4.5",
+    "weight_g": 18,
+    "enclosure": "Silicone/TPU over-mold with LCP antenna housing"
+  },
+  "camera": {
+    "sensor": "Sony IMX415",
+    "resolution": "8.46MP (3864x2192)",
+    "format": "1/2.8 inch",
+    "max_fps": "4K@60fps, 1080p@90fps",
+    "low_light": "0.02 lux (F1.2)",
+    "hdr": "100 dB DOL-HDR",
+    "interface": "MIPI CSI-2 4-lane",
+    "power": "200mW @ 4K30",
+    "price_10k": "$4-6"
+  },
+  "soc": {
+    "chip": "Rockchip RV1106G3",
+    "cpu": "ARM Cortex-A7 @ 1.2GHz + RISC-V MCU",
+    "npu": "1.0 TOPS (INT4/INT8/INT16)",
+    "isp": "8MP@15fps / 5MP@30fps",
+    "encoder": "H.265/H.264 8MP@15fps",
+    "memory": "256MB DDR3L SiP",
+    "package": "QFN128 12.3x12.3mm",
+    "sdk": "RKNN Toolkit 2 (PyTorch/ONNX/TFLite)",
+    "price_10k": "$5-7"
+  },
+  "biometrics": {
+    "ppg_ecg_bioz": {
+      "chip": "Analog Devices MAX86178",
+      "modalities": ["PPG", "ECG", "BioZ"],
+      "ppg_snr": "115 dB",
+      "ecg_compliance": "IEC 60601-2-47",
+      "bioz_range": "16Hz-500kHz",
+      "leds": 6,
+      "photodiodes": 4,
+      "package": "WLP 2.77x2.57mm"
+    },
+    "imu": {
+      "chip": "TDK ICM-45686",
+      "accel_range": "+/-32g",
+      "gyro_range": "+/-4000 dps",
+      "power": "420uA active",
+      "feature": "BalancedGyro vibration rejection",
+      "package": "LGA-14 (drop-in from ICM-42688-P)"
+    },
+    "temperature": {
+      "chip": "ams AS6221",
+      "accuracy": "+/-0.09C",
+      "package": "1.5x1.0mm"
+    },
+    "humidity": {
+      "chip": "Sensirion SHT45",
+      "accuracy": "+/-1.0% RH",
+      "package": "1.5x1.5mm"
+    },
+    "barometer": {
+      "chip": "Bosch BMP585",
+      "feature": "Gel-sealed waterproof",
+      "accuracy": "+/-0.06 hPa relative"
+    },
+    "microphone": {
+      "chip": "Infineon IM73A135V01",
+      "snr": "73 dB(A)",
+      "aop": "135 dB",
+      "waterproof": "IP57 component-level"
+    }
+  },
+  "connectivity": {
+    "wifi": {
+      "chip": "Infineon CYW55913",
+      "standard": "WiFi 6/6E (802.11ax)",
+      "bands": "2.4/5/6 GHz tri-band",
+      "ble": "BLE 5.4 integrated",
+      "mcu": "192MHz Cortex-M33",
+      "package": "3.57x5.32mm WLBGA"
+    },
+    "ble": {
+      "chip": "Nordic nRF54L15",
+      "standard": "BLE 6.0",
+      "feature": "Channel Sounding (+/-10cm ranging)",
+      "cpu": "128MHz Cortex-M33 + RISC-V",
+      "package": "2.4x2.2mm WLCSP"
+    },
+    "cellular": {
+      "chip": "Quectel RG255C-GL",
+      "standard": "5G RedCap (NR-Light)",
+      "dl_speed": "223 Mbps",
+      "ul_speed": "123 Mbps",
+      "package": "29x32x2.4mm LGA",
+      "note": "Integrated in patch - vest eliminated"
+    },
+    "uwb": {
+      "chip": "Qorvo QM35825",
+      "accuracy": "+/-5cm ranging, +/-2 deg 3D AoA",
+      "certification": "FiRa 3.0",
+      "package": "4.08x3.38mm BGA"
+    }
+  },
+  "power": {
+    "battery": {
+      "type": "Enovix silicon-anode",
+      "capacity": "1100-1240 mAh",
+      "energy_density": "935 Wh/L",
+      "fast_charge": "50% in 12 min (3C)",
+      "cycle_life": "500-900 cycles to 80%"
+    },
+    "pmic": "Rockchip RK809-2",
+    "rails": ["1.8V (SoC)", "3.3V (sensors/connectivity)", "3.8V (5G)"],
+    "total_active_power": "~2.4W average (duty-cycled 5G)",
+    "runtime": "3.5-4.0 hours continuous"
+  },
+  "pcb": {
+    "layers": 8,
+    "type": "LCP rigid-flex",
+    "flex_material": "Liquid Crystal Polymer",
+    "rigid_material": "FR4",
+    "features": ["Integrated antennas in LCP flex", "RF isolation 4 radio systems"]
+  },
+  "waterproofing": {
+    "method": "ALD Al2O3 (10nm) + Parylene C (15um) dual-stack",
+    "rating": "IP68 functional hermetic",
+    "wvtr_improvement": "100x over Parylene alone"
+  },
+  "bom_cost_10k": "$81.75",
+  "all_in_cost_10k": "$95",
+  "system_cost_reduction": "38% vs v2.0 (eliminated vest unit)"
+}
