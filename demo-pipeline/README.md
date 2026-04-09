@@ -6,8 +6,8 @@ Working demonstration of the AthleteView video processing stack. Runs entirely o
 
 Takes input video → applies the full AthleteView AI pipeline → outputs enhanced video with:
 
-1. **Super-Resolution** — Bicubic upscaling (production: Real-ESRGAN)
-2. **Player Detection & Tracking** — YOLOv8-nano with centroid tracking (production: YOLOv11 + BoT-SORT)
+1. **Super-Resolution** — Bicubic upscaling (production: VPEG + FlashVSR)
+2. **Player Detection & Tracking** — Background subtraction + centroid tracking (production: YOLO26 + BoT-SORT)
 3. **Biometric HUD Overlay** — Real-time heart rate, SpO2, body temperature, hydration display
 4. **Video Stabilization** — Feature-based optical flow stabilization
 5. **Before/After Comparison** — Side-by-side original vs enhanced output
@@ -44,7 +44,7 @@ python demo_pipeline.py input.mp4 -o my_output/       # Custom output directory
 |--------|---------|----------------------|
 | `demo_pipeline.py` | Main orchestrator | Gateway + AI Engine services |
 | `overlay_engine.py` | Biometric HUD rendering | Biometrics service + Frontend |
-| `tracker.py` | Player detection + tracking | YOLOv11 + BoT-SORT pipeline |
+| `tracker.py` | Player detection + tracking | YOLO26 + BoT-SORT pipeline |
 | `stabilizer.py` | Video stabilization | BasicVSR++ / optical flow |
 | `generate_sample.py` | Test video generator | Real camera input |
 
@@ -52,11 +52,11 @@ python demo_pipeline.py input.mp4 -o my_output/       # Custom output directory
 
 ```
 Demo (this repo):
-  Video File → OpenCV Read → Bicubic Upscale → YOLOv8n → HUD Overlay → Stabilize → MP4
+  Video File → OpenCV Read → Bicubic Upscale → BG Subtraction → HUD Overlay → Stabilize → MP4
 
-Production (athleteview-ai-engine):
-  5G Stream → SRT Ingest → Real-ESRGAN GPU → YOLOv11+BoT-SORT → ViTPose++ →
-  Biometric Fusion → gsplat 3D → LL-HLS/WebRTC/RTMP Distribution
+Production (athleteview-ai-engine, Model Stack v2.0 April 2026):
+  5G Stream → SRT Ingest → VPEG/FlashVSR → YOLO26+BoT-SORT → YOLO26-Pose (live) / ViTPose++ (analysis) →
+  Depth Pro → gsplat 3D → Gemma 4 Commentary → LL-HLS/WebRTC/RTMP Distribution
 ```
 
 ## Requirements
